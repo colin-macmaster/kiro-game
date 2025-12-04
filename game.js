@@ -57,7 +57,8 @@ const game = {
     isRunning: true,
     camera: { x: 0, y: 0 },
     highScore: 0,
-    currentLevel: 1
+    currentLevel: 1,
+    levelStartScore: 0  // Score at the beginning of the current level
 };
 
 // Player
@@ -694,8 +695,10 @@ function loseLife() {
 }
 
 function resetPlayerPosition() {
-    player.x = 100;
-    player.y = 100;
+    // Use the current level's starting position
+    const level = levels[game.currentLevel];
+    player.x = level.startPosition.x;
+    player.y = level.startPosition.y;
     player.velocityX = 0;
     player.velocityY = 0;
 }
@@ -709,8 +712,8 @@ function respawnCollectibles() {
 
 // Reset current run - reset score and respawn collectibles
 function resetCurrentRun() {
-    // Reset score to zero (preserve high score)
-    game.score = 0;
+    // Reset score to the level start score (what you earned in previous levels)
+    game.score = game.levelStartScore;
     updateScore();
     
     // Respawn all collectibles
@@ -737,7 +740,7 @@ function gameOver() {
 }
 
 // Load a specific level
-function loadLevel(levelNumber) {
+function loadLevel(levelNumber, preserveScore = false) {
     const level = levels[levelNumber];
     if (!level) {
         console.error(`Level ${levelNumber} not found`);
@@ -746,6 +749,12 @@ function loadLevel(levelNumber) {
     
     // Update current level
     game.currentLevel = levelNumber;
+    
+    // If preserveScore is true, save the current score as the level start score
+    // This happens when transitioning to a new level after completing the previous one
+    if (preserveScore) {
+        game.levelStartScore = game.score;
+    }
     
     // Update level references
     levelWidth = level.levelWidth;
@@ -783,31 +792,72 @@ function levelComplete() {
         createConfettiParticles();
     }
     
-    document.getElementById('completeScore').textContent = game.score;
-    
-    // Update button text and heading based on current level
+    // Check if there's a next level
     const nextLevel = game.currentLevel + 1;
-    const levelCompleteOverlay = document.getElementById('levelComplete');
-    const heading = levelCompleteOverlay.querySelector('h1');
-    const button = document.getElementById('nextLevelBtn');
     
     if (levels[nextLevel]) {
-        // There's a next level
-        heading.textContent = `Level ${game.currentLevel} Complete!`;
-        button.textContent = 'Next Level';
+        // Show transition screen for next level
+        showLevelTransition(game.currentLevel, game.score);
     } else {
-        // No more levels - game complete
-        heading.textContent = 'Game Complete!';
-        button.textContent = 'Play Again';
+        // No more levels - show game complete screen with same styling
+        document.getElementById('completeScore').textContent = game.score;
+        const levelCompleteOverlay = document.getElementById('levelComplete');
+        levelCompleteOverlay.classList.remove('hidden', 'fade-out');
+    }
+}
+
+// Show level transition screen
+function showLevelTransition(completedLevel, score) {
+    const transitionOverlay = document.getElementById('levelTransition');
+    
+    // Update transition screen content
+    document.getElementById('transitionLevelNumber').textContent = completedLevel;
+    document.getElementById('transitionScore').textContent = score;
+    
+    // Show the transition screen with fade-in
+    transitionOverlay.classList.remove('hidden', 'fade-out');
+    
+    // Set up auto-progression after 3 seconds
+    const autoProgressTimer = setTimeout(() => {
+        hideTransitionScreen();
+    }, 3000);
+    
+    // Store timer ID so we can cancel it if user clicks button
+    transitionOverlay.dataset.timerId = autoProgressTimer;
+}
+
+// Hide transition screen and load next level
+function hideTransitionScreen() {
+    const transitionOverlay = document.getElementById('levelTransition');
+    
+    // Clear auto-progress timer if it exists
+    if (transitionOverlay.dataset.timerId) {
+        clearTimeout(parseInt(transitionOverlay.dataset.timerId));
+        delete transitionOverlay.dataset.timerId;
     }
     
-    levelCompleteOverlay.classList.remove('hidden');
+    // Add fade-out animation
+    transitionOverlay.classList.add('fade-out');
+    
+    // Wait for fade-out animation to complete, then hide and load next level
+    setTimeout(() => {
+        transitionOverlay.classList.add('hidden');
+        transitionOverlay.classList.remove('fade-out');
+        
+        // Load next level and preserve the score earned so far
+        const nextLevel = game.currentLevel + 1;
+        if (levels[nextLevel]) {
+            loadLevel(nextLevel, true);  // Pass true to preserve score
+            game.isRunning = true;
+        }
+    }, 500); // Match the fade-out animation duration
 }
 
 function restartGame() {
     game.score = 0;
     game.lives = 3;
     game.isRunning = true;
+    game.levelStartScore = 0;  // Reset level start score when restarting
     
     // Load level 1
     loadLevel(1);
@@ -824,19 +874,11 @@ function restartGame() {
 // Event listeners
 document.getElementById('restartBtn').addEventListener('click', restartGame);
 document.getElementById('nextLevelBtn').addEventListener('click', () => {
-    // Check if there's a next level
-    const nextLevel = game.currentLevel + 1;
-    if (levels[nextLevel]) {
-        // Load next level and continue playing
-        loadLevel(nextLevel);
-        game.isRunning = true;
-        document.getElementById('levelComplete').classList.add('hidden');
-        // Don't call gameLoop() - it's already running!
-    } else {
-        // No more levels - show game complete
-        // For now, just restart the game
-        restartGame();
-    }
+    // This button is now only used on the game complete screen to restart
+    restartGame();
+});
+document.getElementById('transitionContinueBtn').addEventListener('click', () => {
+    hideTransitionScreen();
 });
 
 // Game loop

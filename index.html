@@ -19,10 +19,21 @@
             <p>Final Score: <span id="finalScore">0</span></p>
             <button id="restartBtn">Restart</button>
         </div>
-        <div id="levelComplete" class="overlay hidden">
-            <h1>Level Complete!</h1>
-            <p>Score: <span id="completeScore">0</span></p>
-            <button id="nextLevelBtn">Play Again</button>
+        <div id="levelComplete" class="transition-overlay hidden">
+            <div class="transition-content">
+                <h1 class="transition-title">Game Complete!</h1>
+                <p class="transition-message">Congratulations!</p>
+                <p class="transition-score">Final Score: <span id="completeScore">0</span></p>
+                <button id="nextLevelBtn">Play Again</button>
+            </div>
+        </div>
+        <div id="levelTransition" class="transition-overlay hidden">
+            <div class="transition-content">
+                <h1 class="transition-title">Level <span id="transitionLevelNumber">1</span> Complete!</h1>
+                <p class="transition-message">Amazing!</p>
+                <p class="transition-score">Score: <span id="transitionScore">0</span></p>
+                <button id="transitionContinueBtn">Continue</button>
+            </div>
         </div>
     </div>
     <script src="game.js"></script>
